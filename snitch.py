@@ -15,6 +15,7 @@ def find_uid(uid_num):
         return "Unknown"
 
 def check_permissions(path, recursive=False, verbose=False):
+    count_error = 0
     console.print(f"Сканирование директории: {path}")
     suspicious_files = []
 
@@ -41,12 +42,12 @@ def check_permissions(path, recursive=False, verbose=False):
                         console.print(f"Файл: {file_path} ({permissions}) - OK")
 
             except Exception as e:
-                console.print(f"Ошибка при проверке {file_path}: {e}")
+                count_error += 1
 
         if not recursive:
             break
 
-    return suspicious_files
+    return suspicious_files, count_error
 
 def main():
     parser = argparse.ArgumentParser(description="Скрипт для проверки прав доступа к файлам.")
@@ -59,7 +60,7 @@ def main():
         console.print(f"Ошибка: Указанный путь не является директорией или не существует")
         return
 
-    suspicious_files = check_permissions(args.path, args.recursive, args.verbose)
+    suspicious_files, errors = check_permissions(args.path, args.recursive, args.verbose)
 
     console.print(f"\nИтоговый отчёт:")
     if suspicious_files:
@@ -68,6 +69,7 @@ def main():
             console.print(f"- {file_path} (права: {permissions}, владелец: {owner})")
     else:
         console.print(f"Небезопасные файлы не найдены")
+    console.print(f"Количество ошибок: {errors}")
 
 if __name__ == "__main__":
     main()
