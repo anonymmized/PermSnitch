@@ -17,6 +17,7 @@ def find_uid(uid_num):
 
 def check_permissions(path, recursive=False, verbose=False, fix=False):
     count_error = 0
+    count_log = 0
     console.print(f"Directory scanning: {path}")
     suspicious_files = []
 
@@ -36,12 +37,14 @@ def check_permissions(path, recursive=False, verbose=False, fix=False):
                 if is_suspicious:
                     suspicious_files.append((file_path, permissions, owner))
                     console.print(f"Found a file with unsafe rights: {file_path} ({permissions})")
-                    if verbose:
-                        console.print(f"Owner: {owner}, Recommendation: Use 'chmod 644' or 'chmod 600'")
-                if is_suspicious and fix:
-                    new_mode = 0o644 if os.path.isfile(file_path) else 0o755
+                    if is_suspicious.endswith('.log'):
+                        count_log += 1
+                    if fix:
+                        new_mode = 0o644 if os.path.isfile(file_path) else 0o755
                     os.chmod(file_path, new_mode)
                     console.print(f"Fixed rights for {file_path}: {permissions} -> {oct(new_mode)[2:].zfill(3)}")
+                    if verbose:
+                        console.print(f"Owner: {owner}, Recommendation: Use 'chmod 644' or 'chmod 600'")
                 else:
                     if verbose:
                         console.print(f"File: {file_path} ({permissions}) - OK")
@@ -60,7 +63,8 @@ def main():
     parser.add_argument("-r", "--recursive", action="store_true", help="Recursive scanning")
     parser.add_argument("-v", "--verbose", action="store_true", help="Detailed conclusion")
     parser.add_argument("--fix", action="store_true", help="Automatically correct unsafe rights")
-    parser.add_argument("--report", help="Save report to file (CSV)")
+    parser.add_argument("-csv", help="Save report to file (CSV)")
+    parser.add_argument("-json", help="Save report to file (JSON)")
     args = parser.parse_args()
 
     if not os.path.isdir(args.path):
@@ -78,12 +82,24 @@ def main():
         console.print(f"Unsafe files were not found")
     console.print(f"The number of errors: {errors}")
 
-    if args.report:
-        with open(args.report, 'w', newline='') as file:
-            writer = csv.writer(file)
-            writer.writerow(["Path", "Permissions", "Owner"])
-            for file_path, permissions, owner in suspicious_files:
-                writer.writerow([file_path, permissions, owner])
-        console.print(f"The report is saved in {args.output}")
+    if args.csv and suspicious_files:
+        try:
+            with open(args.csv, 'w', newline='') as file:
+                writer = csv.writer(file)
+                writer.writerow(["Path", "Permissions", "Owner"])
+                for file_path, permissions, owner in suspicious_files:
+                    writer.writerow([file_path, permissions, owner])
+            console.print(f"The report is saved in {args.csv}")
+        except Exception as e:
+            console.print(f"Error saving CSV report: {e}")
+    
+    if args.json and suspicious_files:
+        report = [{"path": file_path, "permissions": permissions, "owner": owner} for file_path, permissions, owner in suspicious_files]
+        try:
+            with open(args.json, 'w', encoding="utf-8") as file:
+                json.dump(report, file, indent=4, ensure_ascii=False)
+            console.print(f"The report is saved in {args.json}")
+        except Exception as e:
+            console.print(f"Error saving JSON report: {e}")
 if __name__ == "__main__":
     main()
