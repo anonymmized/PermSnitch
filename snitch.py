@@ -1,9 +1,18 @@
 import os
 import stat
 import argparse
+import subprocess
+from pwd import getpwuid
 from rich.console import Console
 
 console = Console()
+
+def find_uid(uid_num):
+    try:
+        user_info = getpwuid(int(uid_num))
+        return user_info.pw_name
+    except KeyError:
+        return "Unknown"
 
 def check_permissions(path, recursive=False, verbose=False):
     console.print(f"Сканирование директории: {path}")
@@ -15,10 +24,9 @@ def check_permissions(path, recursive=False, verbose=False):
             try:
                 file_stat = os.stat(file_path)
                 mode = file_stat.st_mode
-                owner = file_stat.st_uid
-                if owner == 0:
-                    owner = 'root'
-
+                owner_num = str(file_stat.st_uid)
+                owner = find_uid(owner_num)
+                
                 permissions = oct(mode & 0o777)[2:].zfill(3)
 
                 is_suspicious = (mode & stat.S_IWOTH) or permissions == '777'
