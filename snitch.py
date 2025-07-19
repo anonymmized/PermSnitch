@@ -66,6 +66,8 @@ def main():
     parser.add_argument("--fix", action="store_true", help="Automatically correct unsafe rights")
     parser.add_argument("-csv", help="Save report to file (CSV)")
     parser.add_argument("-json", help="Save report to file (JSON)")
+    parser.add_argument("--conf", action="store_true", help="Finding suspicious configuration files")
+    parser.add_argument("--logs", action="store_true", help="Finding suspicious log files")
     args = parser.parse_args()
 
     if not os.path.isdir(args.path):
@@ -81,8 +83,10 @@ def main():
             console.print(f"- {file_path} (rights: {permissions}, owner: {owner})")
     else:
         console.print(f"Unsafe files were not found")
-    console.print(f"The number of suspicious log-files: {cnt_logs}")
-    console.print(f"The number of suspicious conf-files: {cnt_conf}")
+    if args.conf:
+        console.print(f"The number of suspicious conf-files: {cnt_conf}")
+    if args.logs:
+        console.print(f"The number of suspicious log-files: {cnt_logs}")
     console.print(f"The number of errors: {errors}")
 
     if args.csv and suspicious_files:
