@@ -2,7 +2,6 @@ import os
 import csv
 import stat
 import argparse
-import subprocess
 from pwd import getpwuid
 from rich.console import Console
 
@@ -113,3 +112,5 @@ def main():
             console.print(f"Error saving JSON report: {e}", style=f"bold italic {MAIN_COLOR}")
 if __name__ == "__main__":
     main()
+
+
