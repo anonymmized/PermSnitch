@@ -18,6 +18,7 @@ def find_uid(uid_num):
 def check_permissions(path, recursive=False, verbose=False, fix=False):
     count_error = 0
     count_log = 0
+    count_conf = 0
     console.print(f"Directory scanning: {path}")
     suspicious_files = []
 
@@ -37,6 +38,8 @@ def check_permissions(path, recursive=False, verbose=False, fix=False):
                     console.print(f"Found a file with unsafe rights: {file_path} ({permissions})")
                     if file_path.endswith('.log'):
                         count_log += 1
+                    if file_path.endswith('.conf'):
+                        count_conf += 1
                     if fix:
                         new_mode = 0o644 if os.path.isfile(file_path) else 0o755
                     os.chmod(file_path, new_mode)
@@ -53,7 +56,7 @@ def check_permissions(path, recursive=False, verbose=False, fix=False):
         if not recursive:
             break
 
-    return suspicious_files, count_error, count_log
+    return suspicious_files, count_error, count_log, count_conf
 
 def main():
     parser = argparse.ArgumentParser(description="Script for checking the rights to files.")
@@ -69,7 +72,7 @@ def main():
         console.print(f"Error: the specified path is not a directory or does not exist")
         return
 
-    suspicious_files, errors, cnt_logs = check_permissions(args.path, args.recursive, args.verbose, args.fix)
+    suspicious_files, errors, cnt_logs, cnt_conf = check_permissions(args.path, args.recursive, args.verbose, args.fix)
 
     console.print(f"\nThe final report:")
     if suspicious_files:
@@ -79,6 +82,7 @@ def main():
     else:
         console.print(f"Unsafe files were not found")
     console.print(f"The number of suspicious log-files: {cnt_logs}")
+    console.print(f"The number of suspicious conf-files: {cnt_conf}")
     console.print(f"The number of errors: {errors}")
 
     if args.csv and suspicious_files:
