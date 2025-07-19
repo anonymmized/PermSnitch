@@ -16,7 +16,7 @@ def find_uid(uid_num):
 
 def check_permissions(path, recursive=False, verbose=False):
     count_error = 0
-    console.print(f"Сканирование директории: {path}")
+    console.print(f"Directory scanning: {path}")
     suspicious_files = []
 
     for root, dirs, files in os.walk(path) if recursive else [(path, [], os.listdir(path))]:
@@ -34,12 +34,12 @@ def check_permissions(path, recursive=False, verbose=False):
 
                 if is_suspicious:
                     suspicious_files.append((file_path, permissions, owner))
-                    console.print(f"Обнаружен файл с небезопасными правами: {file_path} ({permissions})")
+                    console.print(f"Found a file with unsafe rights: {file_path} ({permissions})")
                     if verbose:
-                        console.print(f"  Владелец: {owner}, Рекомендация: Используйте 'chmod 644' или 'chmod 600'")
+                        console.print(f"  Owner: {owner}, Recommendation: Use 'chmod 644' or 'chmod 600'")
                 else:
                     if verbose:
-                        console.print(f"Файл: {file_path} ({permissions}) - OK")
+                        console.print(f"File: {file_path} ({permissions}) - OK")
 
             except Exception as e:
                 count_error += 1
@@ -50,26 +50,26 @@ def check_permissions(path, recursive=False, verbose=False):
     return suspicious_files, count_error
 
 def main():
-    parser = argparse.ArgumentParser(description="Скрипт для проверки прав доступа к файлам.")
-    parser.add_argument("path", help="Путь к директории для проверки")
-    parser.add_argument("-r", "--recursive", action="store_true", help="Рекурсивное сканирование")
-    parser.add_argument("-v", "--verbose", action="store_true", help="Подробный вывод")
+    parser = argparse.ArgumentParser(description="Script for checking the rights to files.")
+    parser.add_argument("path", help="The path to the directory for verification")
+    parser.add_argument("-r", "--recursive", action="store_true", help="Recursive scanning")
+    parser.add_argument("-v", "--verbose", action="store_true", help="Detailed conclusion")
     args = parser.parse_args()
 
     if not os.path.isdir(args.path):
-        console.print(f"Ошибка: Указанный путь не является директорией или не существует")
+        console.print(f"Error: the specified path is not a directory or does not exist")
         return
 
     suspicious_files, errors = check_permissions(args.path, args.recursive, args.verbose)
 
-    console.print(f"\nИтоговый отчёт:")
+    console.print(f"\nThe final report:")
     if suspicious_files:
-        console.print(f"Найдено {len(suspicious_files)} файлов с небезопасными правами:")
+        console.print(f"Found {len(suspicious_files)} Files with unsafe rights:")
         for file_path, permissions, owner in suspicious_files:
-            console.print(f"- {file_path} (права: {permissions}, владелец: {owner})")
+            console.print(f"- {file_path} (rights: {permissions}, owner: {owner})")
     else:
-        console.print(f"Небезопасные файлы не найдены")
-    console.print(f"Количество ошибок: {errors}")
+        console.print(f"Unsafe files were not found")
+    console.print(f"The number of errors: {errors}")
 
 if __name__ == "__main__":
     main()
