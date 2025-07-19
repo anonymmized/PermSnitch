@@ -14,7 +14,7 @@ def find_uid(uid_num):
     except KeyError:
         return "Unknown"
 
-def check_permissions(path, recursive=False, verbose=False):
+def check_permissions(path, recursive=False, verbose=False, fix=False):
     count_error = 0
     console.print(f"Directory scanning: {path}")
     suspicious_files = []
@@ -36,7 +36,11 @@ def check_permissions(path, recursive=False, verbose=False):
                     suspicious_files.append((file_path, permissions, owner))
                     console.print(f"Found a file with unsafe rights: {file_path} ({permissions})")
                     if verbose:
-                        console.print(f"  Owner: {owner}, Recommendation: Use 'chmod 644' or 'chmod 600'")
+                        console.print(f"Owner: {owner}, Recommendation: Use 'chmod 644' or 'chmod 600'")
+                if is_suspicious and fix:
+                    new_mode = 0o644 if os.path.isfile(file_path) else 0o755
+                    os.chmod(file_path, new_mode)
+                    console.print(f"Fixed rights for {file_path}: {permissions} -> {oct(new_mode)[2:].zfill(3)}")
                 else:
                     if verbose:
                         console.print(f"File: {file_path} ({permissions}) - OK")
@@ -54,13 +58,14 @@ def main():
     parser.add_argument("path", help="The path to the directory for verification")
     parser.add_argument("-r", "--recursive", action="store_true", help="Recursive scanning")
     parser.add_argument("-v", "--verbose", action="store_true", help="Detailed conclusion")
+    parser.add_argument("--fix", action="store_true", help="Automatically correct unsafe rights")
     args = parser.parse_args()
 
     if not os.path.isdir(args.path):
         console.print(f"Error: the specified path is not a directory or does not exist")
         return
 
-    suspicious_files, errors = check_permissions(args.path, args.recursive, args.verbose)
+    suspicious_files, errors = check_permissions(args.path, args.recursive, args.verbose, args.fix)
 
     console.print(f"\nThe final report:")
     if suspicious_files:
