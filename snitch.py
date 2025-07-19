@@ -1,4 +1,5 @@
 import os
+import csv
 import stat
 import argparse
 import subprocess
@@ -59,6 +60,7 @@ def main():
     parser.add_argument("-r", "--recursive", action="store_true", help="Recursive scanning")
     parser.add_argument("-v", "--verbose", action="store_true", help="Detailed conclusion")
     parser.add_argument("--fix", action="store_true", help="Automatically correct unsafe rights")
+    parser.add_argument("--report", help="Save report to file (CSV)")
     args = parser.parse_args()
 
     if not os.path.isdir(args.path):
@@ -76,5 +78,12 @@ def main():
         console.print(f"Unsafe files were not found")
     console.print(f"The number of errors: {errors}")
 
+    if args.report:
+        with open(args.report, 'w', newline='') as file:
+            writer = csv.writer(file)
+            writer.writerow(["Path", "Permissions", "Owner"])
+            for file_path, permissions, owner in suspicious_files:
+                writer.writerow([file_path, permissions, owner])
+        console.print(f"The report is saved in {args.output}")
 if __name__ == "__main__":
     main()
