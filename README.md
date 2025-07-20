@@ -5,7 +5,8 @@
 ---
 
 ## ✨ Welcome to PermSnitch!  
-Hey there! 👋 I’m [Your Name], a Python enthusiast obsessed with cybersecurity. I created **PermSnitch** to help developers and sysadmins detect risky file permissions and protect their systems. Whether you're securing a server or auditing a codebase, this tool’s got your back! 🚀  
+Hey there! 👋 I’m anonymmized
+, a Python enthusiast obsessed with cybersecurity. I created **PermSnitch** to help developers and sysadmins detect risky file permissions and protect their systems. Whether you're securing a server or auditing a codebase, this tool’s got your back! 🚀  
 
 Check it out in action:  
 
@@ -29,7 +30,7 @@ Check it out in action:
 ### Installation  
 1. Clone the repo:  
    ```bash
-   git clone https://github.com/[your_username]/PermSnitch.git
+   git clone https://github.com/anonymmized/PermSnitch.git
    cd PermSnitch
    ```
 2. Install the dependency:
