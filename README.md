@@ -1,5 +1,13 @@
 # PermSnitch 🌟🔒
  
+![PermSnitch Logo](./logo.png)
+
+**Tags:**  
+`Python` 🌱 | [![Python Version](https://img.shields.io/badge/Python-3.6+-blue.svg)](https://www.python.org/) |  
+`Cybersecurity` 🔒 | [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE) |  
+`Open Source` 🌍 | [![GitHub Stars](https://img.shields.io/github/stars/[your_username]/PermSnitch?style=social)](https://github.com/[your_username]/PermSnitch/stargazers) |  
+`Active` 🚀
+
 *A sleek Python tool to scan file permissions and secure your system!*
 
 ---
@@ -63,3 +71,5 @@ Final report:
     ```bash 
     ./run.sh /home -r --csv report.csv --json report.json
     ```
+
+⭐ **Star this repo if you find it useful!**
