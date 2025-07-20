@@ -10,6 +10,16 @@ MAIN_COLOR = "#EE82EE"
 
 console = Console()
 
+def show_ascii():
+    art = r"""
+       ___                ____     _ __      __ 
+      / _ \___ ______ _  / __/__  (_) /_____/ / 
+     / ___/ -_) __/  ' \_\ \/ _ \/ / __/ __/ _ \
+    /_/   \__/_/ /_/_/_/___/_//_/_/\__/\__/_//_/
+                                            
+    """
+    return art
+
 def find_uid(uid_num):
     try:
         user_info = getpwuid(int(uid_num))
@@ -111,6 +121,8 @@ def main():
         except Exception as e:
             console.print(f"Error saving JSON report: {e}", style=f"bold italic {MAIN_COLOR}")
 if __name__ == "__main__":
+    art = show_ascii()
+    console.print(art, style="bold italic green")
     main()
 
 
