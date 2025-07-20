@@ -5,7 +5,7 @@ import argparse
 from pwd import getpwuid
 from rich.console import Console
 
-ERRORS_COLOR = "#DC143C"
+ATTENTION_COLOR = "#DC143C"
 MAIN_COLOR = "#EE82EE"
 
 console = Console()
@@ -47,7 +47,7 @@ def check_permissions(path, recursive=False, verbose=False, fix=False):
 
                 if is_suspicious:
                     suspicious_files.append((file_path, permissions, owner))
-                    console.print(f"Found a file with unsafe rights: {file_path} ({permissions})", style=f"bold italic {MAIN_COLOR}")
+                    console.print(f"Found a file with unsafe rights: {file_path} ({permissions})", style=f"bold italic {ATTENTION_COLOR}")
                     if file_path.endswith('.log'):
                         count_log += 1
                     if file_path.endswith('.conf'):
@@ -92,7 +92,7 @@ def main():
     if suspicious_files:
         console.print(f"Found {len(suspicious_files)} Files with unsafe rights:", style=f"bold italic {MAIN_COLOR}")
         for file_path, permissions, owner in suspicious_files:
-            console.print(f"- {file_path} (rights: {permissions}, owner: {owner})", style=f"bold italic {MAIN_COLOR}")
+            console.print(f"- {file_path} (rights: {permissions}, owner: {owner})", style=f"bold italic {ATTENTION_COLOR}")
     else:
         console.print(f"Unsafe files were not found", style=f"bold italic {MAIN_COLOR}")
     if args.conf:
