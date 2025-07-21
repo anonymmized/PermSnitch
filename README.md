@@ -54,10 +54,15 @@ Run PermSnitch with the provided run.sh script:
     ```bash
     ./run.sh . -r -v --conf --logs
     ```
+- path: The path to the directory for verification
 - -r: Recursive scan
 - -v: Verbose output
+- --fix: Automatically correct unsafe rights
+- -csv: Save report to file (CSV)
+- -json: Save report to file (JSON)
 - --conf: Count .conf files
 - --logs: Count .log files
+- --suid: Enable SUID scanning
 #### Example Output:
 ```
 Directory scanning: .
