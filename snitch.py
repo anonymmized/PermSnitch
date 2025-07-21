@@ -31,6 +31,8 @@ def check_permissions(path, recursive=False, verbose=False, fix=False, suid_scan
     count_error = 0
     count_log = 0
     count_conf = 0
+    suid_count = 0
+    world_writable_count = 0
     console.print(f"Directory scanning: {path}", style=f"bold italic {MAIN_COLOR}")
     suspicious_files = []
 
@@ -48,6 +50,7 @@ def check_permissions(path, recursive=False, verbose=False, fix=False, suid_scan
 
                 if suid_scan and mode & stat.S_ISUID:
                     is_suspicious = True 
+                    suid_count += 1
                     console.print(f"Found SUID file: {file_path} (perms: {oct(mode & 0o7777)[2:]}) - Potential privilege escalation risk!", style=f"bold italic {ATTENTION_COLOR}")
 
                 if is_suspicious:
@@ -57,6 +60,8 @@ def check_permissions(path, recursive=False, verbose=False, fix=False, suid_scan
                         count_log += 1
                     if file_path.endswith('.conf'):
                         count_conf += 1
+                    if mode & stat.S_IWOTH or permissions == '777':
+                        world_writable_count += 1
                     if fix:
                         new_mode = 0o644 if os.path.isfile(file_path) else 0o755
                     os.chmod(file_path, new_mode)
@@ -73,7 +78,7 @@ def check_permissions(path, recursive=False, verbose=False, fix=False, suid_scan
         if not recursive:
             break
 
-    return suspicious_files, count_error, count_log, count_conf
+    return suspicious_files, count_error, count_log, count_conf, suid_count, world_writable_count
 
 def main():
     parser = argparse.ArgumentParser(description="Script for checking the rights to files.")
@@ -92,7 +97,7 @@ def main():
         console.print(f"Error: the specified path is not a directory or does not exist", style=f"bold italic {ERRORS_COLOR}")
         return
 
-    suspicious_files, errors, cnt_logs, cnt_conf = check_permissions(args.path, args.recursive, args.verbose, args.fix, args.suid)
+    suspicious_files, errors, cnt_logs, cnt_conf, cnt_suid, cnt_writable = check_permissions(args.path, args.recursive, args.verbose, args.fix, args.suid)
 
     console.print(f"\nThe final report:", style=f"bold italic {MAIN_COLOR}")
     if suspicious_files:
@@ -100,12 +105,14 @@ def main():
         for file_path, permissions, owner in suspicious_files:
             console.print(f"- {file_path} (rights: {permissions}, owner: {owner})", style=f"bold italic {ATTENTION_COLOR}")
     else:
-        console.print(f"Unsafe files were not found", style=f"bold italic {MAIN_COLOR}")
+        console.print(f"Unsafe files were not found", style=f"bold italic {ATTENTION_COLOR}")
     if args.conf:
-        console.print(f"The number of suspicious conf-files: {cnt_conf}", style=f"bold italic {MAIN_COLOR}")
+        console.print(f"The number of suspicious conf-files: {cnt_conf}", style=f"bold italic {ATTENTION_COLOR}")
     if args.logs:
-        console.print(f"The number of suspicious log-files: {cnt_logs}", style=f"bold italic {MAIN_COLOR}")
-    console.print(f"The number of errors: {errors}", style=f"bold italic {MAIN_COLOR}")
+        console.print(f"The number of suspicious log-files: {cnt_logs}", style=f"bold italic {ATTENTION_COLOR}")
+    console.print(f"The number of errors: {errors}", style=f"bold italic {ATTENTION_COLOR}")
+    console.print(f"SUID risks: {cnt_suid}", style=f"bold italic {ATTENTION_COLOR}")
+    console.print(f"Word-writable: {cnt_writable}", style=f"bold italic {ATTENTION_COLOR}")
 
     if args.csv and suspicious_files:
         try:
