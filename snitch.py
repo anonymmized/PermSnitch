@@ -4,9 +4,16 @@ import stat
 import argparse
 from pwd import getpwuid
 from rich.console import Console
+from watchdog.observers import Observer
+from watchdog.events import FileSystemEventHandler
 
 ATTENTION_COLOR = "#DC143C"
 MAIN_COLOR = "#EE82EE"
+
+class MyHandler(FileSystemEventHandler):
+    def on_modified(self, event):
+        perms = oct(os.stat(event.src_path).st_mode & 0o777)[2:]
+        console.print(f"File modified: {event.src_path}, Permissions: {perms}")
 
 console = Console()
 
@@ -27,7 +34,7 @@ def find_uid(uid_num):
     except KeyError:
         return "Unknown"
 
-def check_permissions(path, recursive=False, verbose=False, fix=False, suid_scan=False, interactive=False):
+def check_permissions(path, recursive=False, verbose=False, fix=False, suid_scan=False, interactive=False, monitoring=False):
     count_error = 0
     count_log = 0
     count_conf = 0
@@ -47,7 +54,7 @@ def check_permissions(path, recursive=False, verbose=False, fix=False, suid_scan
                 owner = find_uid(owner_num)
                 permissions = oct(mode & 0o777)[2:].zfill(3)
                 is_suspicious = (mode & stat.S_IWOTH) or permissions == '777'
-
+                
                 if suid_scan and mode & stat.S_ISUID:
                     is_suspicious = True 
                     suid_count += 1
@@ -106,13 +113,14 @@ def main():
     parser.add_argument("--logs", action="store_true", help="Finding suspicious log files")
     parser.add_argument("--suid", action="store_true", help="Enable SUID scanning")
     parser.add_argument("--interactive", action="store_true", help="Interactive mode for fixing permissions")
+    parser.add_argument("--monitoring", action="store_true", help="Monitoring of the selected directory")
     args = parser.parse_args()
 
     if not os.path.isdir(args.path):
         console.print(f"Error: the specified path is not a directory or does not exist", style=f"bold italic {ATTENTION_COLOR}")
         return
 
-    suspicious_files, errors, cnt_logs, cnt_conf, cnt_suid, cnt_writable, cnt_fixed = check_permissions(args.path, args.recursive, args.verbose, args.fix, args.suid, args.interactive)
+    suspicious_files, errors, cnt_logs, cnt_conf, cnt_suid, cnt_writable, cnt_fixed = check_permissions(args.path, args.recursive, args.verbose, args.fix, args.suid, args.interactive, args.monitoring)
 
     console.print(f"\nThe final report:", style=f"bold italic {MAIN_COLOR}")
     if suspicious_files:
