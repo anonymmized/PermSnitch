@@ -27,12 +27,13 @@ def find_uid(uid_num):
     except KeyError:
         return "Unknown"
 
-def check_permissions(path, recursive=False, verbose=False, fix=False, suid_scan=False):
+def check_permissions(path, recursive=False, verbose=False, fix=False, suid_scan=False, interactive=False):
     count_error = 0
     count_log = 0
     count_conf = 0
     suid_count = 0
     world_writable_count = 0
+    fixed_count = 0 
     console.print(f"Directory scanning: {path}", style=f"bold italic {MAIN_COLOR}")
     suspicious_files = []
 
@@ -46,7 +47,6 @@ def check_permissions(path, recursive=False, verbose=False, fix=False, suid_scan
                 owner = find_uid(owner_num)
                 permissions = oct(mode & 0o777)[2:].zfill(3)
                 is_suspicious = (mode & stat.S_IWOTH) or permissions == '777'
-
 
                 if suid_scan and mode & stat.S_ISUID:
                     is_suspicious = True 
@@ -62,10 +62,24 @@ def check_permissions(path, recursive=False, verbose=False, fix=False, suid_scan
                         count_conf += 1
                     if mode & stat.S_IWOTH or permissions == '777':
                         world_writable_count += 1
+                    if interactive and not fix:
+                        while True:
+                            console.print("Fix (y/n): ", style=f"bold italic {MAIN_COLOR}", end="")
+                            interactive_ans = input().lower()
+                            if interactive_ans == "y":
+                                new_mode = 0o644 if os.path.isfile(file_path) else 0o755
+                                os.chmod(file_path, new_mode)
+                                fixed_count += 1
+                                console.print(f"Successfully fixed rights for {file_path}: {permissions} -> {oct(new_mode)[2:].zfill(3)}", style=f"bold italic {MAIN_COLOR}")
+                                break
+                            elif interactive_ans == "n":
+                                break
+                            else:
+                                console.print("Invalid input. Please enter 'y' or 'n'", style=f"bold italic {ATTENTION_COLOR}")
                     if fix:
                         new_mode = 0o644 if os.path.isfile(file_path) else 0o755
-                    os.chmod(file_path, new_mode)
-                    console.print(f"Fixed rights for {file_path}: {permissions} -> {oct(new_mode)[2:].zfill(3)}", style=f"bold italic {MAIN_COLOR}")
+                        os.chmod(file_path, new_mode)
+                        console.print(f"Fixed rights for {file_path}: {permissions} -> {oct(new_mode)[2:].zfill(3)}", style=f"bold italic {MAIN_COLOR}")
                     if verbose:
                         console.print(f"Owner: {owner}, Recommendation: Use 'chmod 644' or 'chmod 600'", style=f"bold italic {MAIN_COLOR}")
                 else:
@@ -78,7 +92,7 @@ def check_permissions(path, recursive=False, verbose=False, fix=False, suid_scan
         if not recursive:
             break
 
-    return suspicious_files, count_error, count_log, count_conf, suid_count, world_writable_count
+    return suspicious_files, count_error, count_log, count_conf, suid_count, world_writable_count, fixed_count
 
 def main():
     parser = argparse.ArgumentParser(description="Script for checking the rights to files.")
@@ -91,13 +105,14 @@ def main():
     parser.add_argument("--conf", action="store_true", help="Finding suspicious configuration files")
     parser.add_argument("--logs", action="store_true", help="Finding suspicious log files")
     parser.add_argument("--suid", action="store_true", help="Enable SUID scanning")
+    parser.add_argument("--interactive", action="store_true", help="Interactive mode for fixing permissions")
     args = parser.parse_args()
 
     if not os.path.isdir(args.path):
-        console.print(f"Error: the specified path is not a directory or does not exist", style=f"bold italic {ERRORS_COLOR}")
+        console.print(f"Error: the specified path is not a directory or does not exist", style=f"bold italic {ATTENTION_COLOR}")
         return
 
-    suspicious_files, errors, cnt_logs, cnt_conf, cnt_suid, cnt_writable = check_permissions(args.path, args.recursive, args.verbose, args.fix, args.suid)
+    suspicious_files, errors, cnt_logs, cnt_conf, cnt_suid, cnt_writable, cnt_fixed = check_permissions(args.path, args.recursive, args.verbose, args.fix, args.suid, args.interactive)
 
     console.print(f"\nThe final report:", style=f"bold italic {MAIN_COLOR}")
     if suspicious_files:
@@ -105,11 +120,13 @@ def main():
         for file_path, permissions, owner in suspicious_files:
             console.print(f"- {file_path} (rights: {permissions}, owner: {owner})", style=f"bold italic {ATTENTION_COLOR}")
     else:
-        console.print(f"Unsafe files were not found", style=f"bold italic {ATTENTION_COLOR}")
+        console.print(f"Unsafe files were not found", style=f"bold italic {MAIN_COLOR}")
     if args.conf:
-        console.print(f"The number of suspicious conf-files: {cnt_conf}", style=f"bold italic {ATTENTION_COLOR}")
+        console.print(f"The number of suspicious conf-files: {cnt_conf}", style=f"bold italic {MAIN_COLOR}")
     if args.logs:
-        console.print(f"The number of suspicious log-files: {cnt_logs}", style=f"bold italic {ATTENTION_COLOR}")
+        console.print(f"The number of suspicious log-files: {cnt_logs}", style=f"bold italic {MAIN_COLOR}")
+    if cnt_fixed and args.interactive:
+        console.print(f"The number of fixed files: {cnt_fixed}", style=f"bold italic {MAIN_COLOR}")
     console.print(f"The number of errors: {errors}", style=f"bold italic {ATTENTION_COLOR}")
     console.print(f"SUID risks: {cnt_suid}", style=f"bold italic {ATTENTION_COLOR}")
     console.print(f"Word-writable: {cnt_writable}", style=f"bold italic {ATTENTION_COLOR}")
