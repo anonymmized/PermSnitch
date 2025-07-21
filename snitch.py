@@ -27,7 +27,7 @@ def find_uid(uid_num):
     except KeyError:
         return "Unknown"
 
-def check_permissions(path, recursive=False, verbose=False, fix=False):
+def check_permissions(path, recursive=False, verbose=False, fix=False, suid_scan=False):
     count_error = 0
     count_log = 0
     count_conf = 0
@@ -44,6 +44,11 @@ def check_permissions(path, recursive=False, verbose=False, fix=False):
                 owner = find_uid(owner_num)
                 permissions = oct(mode & 0o777)[2:].zfill(3)
                 is_suspicious = (mode & stat.S_IWOTH) or permissions == '777'
+
+
+                if suid_scan and mode & stat.S_ISUID:
+                    is_suspicious = True 
+                    console.print(f"Found SUID file: {file_path} (perms: {oct(mode & 0o7777)[2:]}) - Potential privilege escalation risk!", style=f"bold italic {ATTENTION_COLOR}")
 
                 if is_suspicious:
                     suspicious_files.append((file_path, permissions, owner))
@@ -80,13 +85,14 @@ def main():
     parser.add_argument("-json", help="Save report to file (JSON)")
     parser.add_argument("--conf", action="store_true", help="Finding suspicious configuration files")
     parser.add_argument("--logs", action="store_true", help="Finding suspicious log files")
+    parser.add_argument("--suid", action="store_true", help="Enable SUID scanning")
     args = parser.parse_args()
 
     if not os.path.isdir(args.path):
         console.print(f"Error: the specified path is not a directory or does not exist", style=f"bold italic {ERRORS_COLOR}")
         return
 
-    suspicious_files, errors, cnt_logs, cnt_conf = check_permissions(args.path, args.recursive, args.verbose, args.fix)
+    suspicious_files, errors, cnt_logs, cnt_conf = check_permissions(args.path, args.recursive, args.verbose, args.fix, args.suid)
 
     console.print(f"\nThe final report:", style=f"bold italic {MAIN_COLOR}")
     if suspicious_files:
@@ -113,6 +119,7 @@ def main():
             console.print(f"Error saving CSV report: {e}", style=f"bold italic {MAIN_COLOR}")
     
     if args.json and suspicious_files:
+        import json
         report = [{"path": file_path, "permissions": permissions, "owner": owner} for file_path, permissions, owner in suspicious_files]
         try:
             with open(args.json, 'w', encoding="utf-8") as file:
