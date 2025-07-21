@@ -1,6 +1,6 @@
 # PermSnitch 🌟🔒
  
-![PermSnitch Logo](./logo.png)
+![PermSnitch Logo](./logo1.png)
 
 **Tags:**  
 `Python` 🌱 | [![Python Version](https://img.shields.io/badge/Python-3.6+-blue.svg)](https://www.python.org/) |  
