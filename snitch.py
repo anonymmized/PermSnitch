@@ -1,6 +1,7 @@
 import os
 import csv
 import stat
+import time
 import argparse
 from pwd import getpwuid
 from rich.console import Console
@@ -9,11 +10,6 @@ from watchdog.events import FileSystemEventHandler
 
 ATTENTION_COLOR = "#DC143C"
 MAIN_COLOR = "#EE82EE"
-
-class MyHandler(FileSystemEventHandler):
-    def on_modified(self, event):
-        perms = oct(os.stat(event.src_path).st_mode & 0o777)[2:]
-        console.print(f"File modified: {event.src_path}, Permissions: {perms}")
 
 console = Console()
 
@@ -34,7 +30,7 @@ def find_uid(uid_num):
     except KeyError:
         return "Unknown"
 
-def check_permissions(path, recursive=False, verbose=False, fix=False, suid_scan=False, interactive=False, monitoring=False):
+def check_permissions(path, recursive=False, verbose=False, fix=False, suid_scan=False, interactive=False):
     count_error = 0
     count_log = 0
     count_conf = 0
@@ -54,7 +50,7 @@ def check_permissions(path, recursive=False, verbose=False, fix=False, suid_scan
                 owner = find_uid(owner_num)
                 permissions = oct(mode & 0o777)[2:].zfill(3)
                 is_suspicious = (mode & stat.S_IWOTH) or permissions == '777'
-                
+
                 if suid_scan and mode & stat.S_ISUID:
                     is_suspicious = True 
                     suid_count += 1
@@ -101,6 +97,50 @@ def check_permissions(path, recursive=False, verbose=False, fix=False, suid_scan
 
     return suspicious_files, count_error, count_log, count_conf, suid_count, world_writable_count, fixed_count
 
+class PermSnitchHandler(FileSystemEventHandler):
+    def __init__(self, console):
+        self.console = console
+    def on_modified(self, event):
+        if not event.is_directory:
+            try: 
+                file_stat = os.stat(event.src_path)
+                mode = file_stat.st_mode
+                permissions = oct(mode & 0o777)[2:].zfill(3)
+                is_suspicious = (mode & stat.S_IWOTH) or permissions == "777"
+                if mode & stat.S_ISUID:
+                    is_suspicious = True
+                    self.console.print(f"New SUID detected: {event.src_path} (perms: {oct(mode & 0o7777)[2:]}) - Potential privilege escalation risk!", style=f"bold italic {ATTENTION_COLOR}")
+                if is_suspicious:
+                    self.console.print(f"New unsafe rights detected: {event.src_path} (perms: {permissions})", style=f"bold italic {ATTENTION_COLOR}")
+            except Exception as e:
+                self.console.print(f"Error monitoring {event.src_path}: {e}", style=f"bold italic {ATTENTION_COLOR}")
+    def on_created(self, event):
+        if not event.is_directory:
+            try:
+                file_stat = os.stat(event.src_path)
+                mode = file_stat.st_mode
+                permissions = oct(mode & 0o777)[2:].zfill(3)
+                if mode & stat.S_ISUID or (mode & stat.S_IWOTH) or permissions == '777':
+                    self.console.print(
+                        f"[red]New file with unsafe rights: {event.src_path} (perms: {oct(mode & 0o7777)[2:] if mode & stat.S_ISUID else permissions})[/red]"
+                    )
+            except Exception as e:
+                self.console.print(f"Error monitoring {event.src_path}: {e}", style=f"bold italic {ATTENTION_COLOR}")
+
+
+def start_monitor(path, console):
+    event_handler = PermSnitchHandler(console)
+    observer = Observer()
+    observer.schedule(event_handler, path=path, recursive=False)
+    observer.start()
+    console.print(f"Monitoring {path}...", style=f"bold italic {MAIN_COLOR}")
+    try:
+        while True:
+            time.sleep(1)
+    except KeyboardInterrupt:
+        observer.stop()
+    observer.join()
+
 def main():
     parser = argparse.ArgumentParser(description="Script for checking the rights to files.")
     parser.add_argument("path", help="The path to the directory for verification")
@@ -120,45 +160,48 @@ def main():
         console.print(f"Error: the specified path is not a directory or does not exist", style=f"bold italic {ATTENTION_COLOR}")
         return
 
-    suspicious_files, errors, cnt_logs, cnt_conf, cnt_suid, cnt_writable, cnt_fixed = check_permissions(args.path, args.recursive, args.verbose, args.fix, args.suid, args.interactive, args.monitoring)
-
-    console.print(f"\nThe final report:", style=f"bold italic {MAIN_COLOR}")
-    if suspicious_files:
-        console.print(f"Found {len(suspicious_files)} Files with unsafe rights:", style=f"bold italic {MAIN_COLOR}")
-        for file_path, permissions, owner in suspicious_files:
-            console.print(f"- {file_path} (rights: {permissions}, owner: {owner})", style=f"bold italic {ATTENTION_COLOR}")
+    if args.monitoring:
+        start_monitor(args.path, console)
     else:
-        console.print(f"Unsafe files were not found", style=f"bold italic {MAIN_COLOR}")
-    if args.conf:
-        console.print(f"The number of suspicious conf-files: {cnt_conf}", style=f"bold italic {MAIN_COLOR}")
-    if args.logs:
-        console.print(f"The number of suspicious log-files: {cnt_logs}", style=f"bold italic {MAIN_COLOR}")
-    if cnt_fixed and args.interactive:
-        console.print(f"The number of fixed files: {cnt_fixed}", style=f"bold italic {MAIN_COLOR}")
-    console.print(f"The number of errors: {errors}", style=f"bold italic {ATTENTION_COLOR}")
-    console.print(f"SUID risks: {cnt_suid}", style=f"bold italic {ATTENTION_COLOR}")
-    console.print(f"Word-writable: {cnt_writable}", style=f"bold italic {ATTENTION_COLOR}")
+        suspicious_files, errors, cnt_logs, cnt_conf, cnt_suid, cnt_writable, cnt_fixed = check_permissions(args.path, args.recursive, args.verbose, args.fix, args.suid, args.interactive)
 
-    if args.csv and suspicious_files:
-        try:
-            with open(args.csv, 'w', newline='') as file:
-                writer = csv.writer(file)
-                writer.writerow(["Path", "Permissions", "Owner"])
-                for file_path, permissions, owner in suspicious_files:
-                    writer.writerow([file_path, permissions, owner])
-            console.print(f"The report is saved in {args.csv}", style=f"bold italic {MAIN_COLOR}")
-        except Exception as e:
-            console.print(f"Error saving CSV report: {e}", style=f"bold italic {MAIN_COLOR}")
-    
-    if args.json and suspicious_files:
-        import json
-        report = [{"path": file_path, "permissions": permissions, "owner": owner} for file_path, permissions, owner in suspicious_files]
-        try:
-            with open(args.json, 'w', encoding="utf-8") as file:
-                json.dump(report, file, indent=4, ensure_ascii=False)
-            console.print(f"The report is saved in {args.json}", style=f"bold italic {MAIN_COLOR}")
-        except Exception as e:
-            console.print(f"Error saving JSON report: {e}", style=f"bold italic {MAIN_COLOR}")
+        console.print(f"\nThe final report:", style=f"bold italic {MAIN_COLOR}")
+        if suspicious_files:
+            console.print(f"Found {len(suspicious_files)} Files with unsafe rights:", style=f"bold italic {MAIN_COLOR}")
+            for file_path, permissions, owner in suspicious_files:
+                console.print(f"- {file_path} (rights: {permissions}, owner: {owner})", style=f"bold italic {ATTENTION_COLOR}")
+        else:
+            console.print(f"Unsafe files were not found", style=f"bold italic {MAIN_COLOR}")
+        if args.conf:
+            console.print(f"The number of suspicious conf-files: {cnt_conf}", style=f"bold italic {MAIN_COLOR}")
+        if args.logs:
+            console.print(f"The number of suspicious log-files: {cnt_logs}", style=f"bold italic {MAIN_COLOR}")
+        if cnt_fixed and args.interactive:
+            console.print(f"The number of fixed files: {cnt_fixed}", style=f"bold italic {MAIN_COLOR}")
+        console.print(f"The number of errors: {errors}", style=f"bold italic {ATTENTION_COLOR}")
+        console.print(f"SUID risks: {cnt_suid}", style=f"bold italic {ATTENTION_COLOR}")
+        console.print(f"Word-writable: {cnt_writable}", style=f"bold italic {ATTENTION_COLOR}")
+
+        if args.csv and suspicious_files:
+            try:
+                with open(args.csv, 'w', newline='') as file:
+                    writer = csv.writer(file)
+                    writer.writerow(["Path", "Permissions", "Owner"])
+                    for file_path, permissions, owner in suspicious_files:
+                        writer.writerow([file_path, permissions, owner])
+                console.print(f"The report is saved in {args.csv}", style=f"bold italic {MAIN_COLOR}")
+            except Exception as e:
+                console.print(f"Error saving CSV report: {e}", style=f"bold italic {MAIN_COLOR}")
+        
+        if args.json and suspicious_files:
+            import json
+            report = [{"path": file_path, "permissions": permissions, "owner": owner} for file_path, permissions, owner in suspicious_files]
+            try:
+                with open(args.json, 'w', encoding="utf-8") as file:
+                    json.dump(report, file, indent=4, ensure_ascii=False)
+                console.print(f"The report is saved in {args.json}", style=f"bold italic {MAIN_COLOR}")
+            except Exception as e:
+                console.print(f"Error saving JSON report: {e}", style=f"bold italic {MAIN_COLOR}")
 if __name__ == "__main__":
     art = show_ascii()
     console.print(art, style="bold italic green")
