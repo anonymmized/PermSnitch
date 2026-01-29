@@ -14,7 +14,7 @@
 
 ## ✨ Welcome to PermSnitch!  
 Hey there! 👋 I’m anonymmized
-, a Python enthusiast obsessed with cybersecurity. I created **PermSnitch** to help developers and sysadmins detect risky file permissions and protect their systems. Whether you're securing a server or auditing a codebase, this tool’s got your back! 🚀  
+I created **PermSnitch** to help developers and sysadmins detect risky file permissions and protect their systems. Whether you're securing a server or auditing a codebase, this tool’s got your back! 🚀  
 
 Check it out in action:  
 
