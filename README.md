@@ -73,8 +73,6 @@ Final report:
 - Number of .log files: 1
 ```
 #### Save reports:
-    ```bash 
+   ```bash 
     ./run.sh /home -r --csv report.csv --json report.json
-    ```
-
-⭐ **Star this repo if you find it useful!**
+   ```
