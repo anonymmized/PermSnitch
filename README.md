@@ -51,9 +51,9 @@ Check it out in action:
     ```
 ### Usage
 Run PermSnitch with the provided run.sh script:
-    ```bash
+   ```bash
     ./run.sh . -r -v --conf --logs
-    ```
+   ```
 - path: The path to the directory for verification
 - -r: Recursive scan
 - -v: Verbose output
